@@ -1,0 +1,210 @@
+﻿<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EA 6 - Fliegende Kugeln</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-okaidia.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gl-matrix@2.8.1/dist/gl-matrix-min.js"></script>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+		<script src="GVT_Src_vertexData_sphere.js"></script>
+		<script src="GVT_Src_vertexData_torus.js"></script>
+		<script src="GVT_Src_vertexData_plane.js"></script>
+		<script src="TFM_Src_tpl.js"></script>
+		<script type="x-shader/x-vertex" id="vertexshader">
+			attribute vec3 aPosition;
+			attribute vec3 aNormal;
+
+			uniform mat4 uPMatrix;
+			uniform mat4 uMVMatrix;
+			uniform vec4 uColor;
+			uniform mat3 uNMatrix;
+
+			varying vec4 vColor;
+
+			void main(){
+			vec3 tNormal = uNMatrix * aNormal;
+
+			gl_Position = uPMatrix * uMVMatrix * vec4(aPosition, 1.0);
+
+			vColor = vec4(tNormal.z, tNormal.z, tNormal.z, 1.0);
+			vColor = uColor * (vColor + 1.0) / 2.0;
+			}
+		</script>
+		<script type="x-shader/x-fragment" id="fragmentshader">
+			precision mediump float;
+			varying vec4 vColor;
+
+			void main() {
+			gl_FragColor = vColor;
+			}
+		</script>
+    <link rel="stylesheet" href="style.css">
+
+
+</head>
+
+<body data-bs-spy="scroll" data-bs-target=".navbar" data-bs-offset="70" onload="app.start()">
+    <nav class="navbar navbar-expand-lg navbar-light fixed-top">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">EA 6 - Fliegende Kugeln</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item"><a class="nav-link" href="#teil1">Animation</a></li>
+                    
+                    <li class="nav-item"><a class="nav-link" href="#documentationSection">Dokumentation</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-5 pt-5" id="mainContent">
+        <section id="teil1" class="mb-4">
+            <div class="row">
+                <!-- Left Column for Canvas -->
+                <div class="col-md-6">
+
+                    <h2>Animation</h2>
+                    <canvas id="canvas" width="600" height="500"></canvas>
+                </div>
+                <!-- Right Column for Controls -->
+<div class="col-md-6 d-flex flex-column align-items-start justify-content-center">
+    <h3>Steuerung</h3>
+    <p>Nutzen Sie die Tastatur, um die Kamera und die Modelle in der Szene zu steuern. Beachten Sie, dass einige Steuerungen zwischen Groß- und Kleinschreibung unterscheiden:</p>
+    <ul>
+        <li><strong>Kamerasteuerung:</strong>
+            <ul>
+                <li><strong>C:</strong> Kamera um die Szene rotieren.</li>
+                <li><strong>H:</strong> Kamera vertikal bewegen (nach oben/unten).</li>
+                <li><strong>D:</strong> Kameraentfernung vom Zentrum ändern.</li>
+                <li><strong>V:</strong> Öffnungswinkel (FOV) der Kamera anpassen.</li>
+                
+            </ul>
+        </li>
+        
+       
+        <br>
+        <li><strong>Animation:</strong>
+            <ul>
+                <li><strong>K:</strong> Animation pausieren oder fortsetzen.</li>
+            </ul>
+        </li>
+    </ul>
+</div>
+
+            </div>
+        </section>
+
+        
+
+        <section id="documentationSection" class="mb-4">
+    <h2>Dokumentation</h2>
+
+    <h3>1. Animation</h3>
+    
+    <p>Die Animation der Szene basiert auf einer kontinuierlichen Aktualisierung der Modelle und der Kamera.</p>
+    <br>
+    <h4>1.1 Zeitsteuerung</h4>
+    <p>Die globale Variable <code>time</code> wird bei jedem Animationsschritt inkrementiert. Dies ermöglicht die zeitliche Steuerung der Bewegungen:</p>
+    <pre><code class="language-javascript">
+time += animationSpeed;
+    </code></pre>
+    <p>Der Faktor <code>animationSpeed</code> beeinflusst die Geschwindigkeit der Animation und erlaubt eine einfache Anpassung an verschiedene Anforderungen.</p>
+    <br>
+    <h4>1.2 Animations-Schleife</h4>
+    <p>Die zentrale Animationsschleife wird über die <code>render</code>-Funktion gesteuert. Diese Funktion wird kontinuierlich aufgerufen, solange die Animation aktiv ist:</p>
+    <pre><code class="language-javascript">
+function render() {
+    if (!animationActive) return; // Animation stoppen, wenn pausiert
+
+    time += animationSpeed; // Zeit aktualisieren
+
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT); // Buffer leeren
+
+    setProjection();
+    calculateCameraOrbit();
+    mat4.lookAt(camera.vMatrix, camera.eye, camera.center, camera.up);
+
+    for (var i = 0; i < models.length; i++) {
+        if (models[i].type === "sphere") {
+            updateSpherePosition(models[i], i - 2); // Position der Kugel aktualisieren
+        }
+
+        updateTransformations(models[i]); // Transformationen anwenden
+        draw(models[i]); // Modell zeichnen
+    }
+
+    animationFrameId = requestAnimationFrame(render); // Nächstes Frame anfordern
+}
+    </code></pre>
+    <p>Die Schleife aktualisiert die Zeitvariable, berechnet die neuen Transformationen für jedes Modell und zeichnet die Szene neu.</p>
+    <br>
+    <h4>1.3 Animation des Torus</h4>
+    <p>Der Torus wird kontinuierlich um die X-Achse gedreht. Diese Animation wird direkt in der <code>updateTransformations</code>-Funktion realisiert:</p>
+    <pre><code class="language-javascript">
+if (model.type === "torus") {
+    mat4.rotateX(mMatrix, mMatrix, time * torusRotationSpeed);
+}
+    </code></pre>
+    <p>Hier wird die aktuelle Zeit <code>time</code> mit der Rotationsgeschwindigkeit <code>torusRotationSpeed</code> multipliziert, um den Drehwinkel zu berechnen.</p>
+    <br>
+    <h4>1.4 Animation der Kugeln</h4>
+    <p>Die Kugeln bewegen sich entlang kreisförmiger Bahnen, deren Positionen dynamisch mit trigonometrischen Funktionen berechnet werden:</p>
+    <pre><code class="language-javascript">
+var angle = angularSpeed * time + model.phaseShift;
+var x = centerX + radius * Math.cos(angle) * dirX;
+var y = centerY + radius * Math.cos(angle) * dirY;
+var z = radius * Math.sin(angle);
+
+model.translate[0] = x;
+model.translate[1] = y;
+model.translate[2] = z;
+    </code></pre>
+    <p>Die Variablen <code>centerX</code>, <code>centerY</code>, und <code>radius</code> definieren die Bahn der Kugeln. Die Phasenverschiebung <code>phaseShift</code> verhindert, dass sich die Kugeln überlappen.</p>
+    <br><br>
+
+
+    <h3>2. Flugbahn der Kugeln</h3>
+    <p>Das Problem wurde durch eine Kombination aus geometrischer Platzierung, Phasenverschiebung und unterschiedlichen Mittelpunkten gelöst:</p>
+
+<ul>
+    <li><strong>Geometrische Platzierung:</strong> Jede Kugel bewegt sich auf einer kreisförmigen Bahn, deren Mittelpunkt auf der Oberfläche des Torus liegt. Dies wird durch die Parameter <code>centerX</code>, <code>centerY</code> und <code>centerZ</code> bestimmt, die auf einem größeren Radius <code>R</code> des Torus basieren. Der Radius der Kugelbahn selbst ist kleiner, sodass die Kugeln sich nie mit der Torus-Oberfläche überschneiden.</li>
+    
+    <li><strong>Phasenverschiebung:</strong> Jede Kugel erhält eine individuelle <code>phaseShift</code>-Variable, die bei der Berechnung ihrer Position berücksichtigt wird. Diese Phasenverschiebung sorgt dafür, dass die Kugeln zeitlich versetzt starten und ihre Bewegungen sich nicht überlappen.</li>
+    
+    <li><strong>Unterschiedliche Mittelpunkte:</strong> Zusätzlich hat jede Kugel einen individuellen <code>theta</code>-Wert, der ihren Mittelpunkt entlang der großen Kreisbahn des Torus festlegt. Dadurch liegen die Kugelbahnen in unterschiedlichen Ebenen oder Winkeln, wodurch Kollisionen zwischen den Kugeln verhindert werden.</li>
+</ul>
+
+<p>Die Berechnungen für die Position jeder Kugel erfolgen in der Funktion <code>updateSpherePosition</code> wie folgt:</p>
+<pre><code class="language-javascript">
+var centerX = R * Math.cos(model.theta);
+var centerY = R * Math.sin(model.theta);
+var centerZ = 0; // Mittelpunkt auf der Torus-Oberfläche
+
+var angle = angularSpeed * time + model.phaseShift; // Zeitliche Phasenverschiebung
+
+var x = centerX + radius * Math.cos(angle) * dirX;
+var y = centerY + radius * Math.cos(angle) * dirY;
+var z = radius * Math.sin(angle); // Z-Koordinate aus Sinusfunktion
+
+model.translate[0] = x;
+model.translate[1] = y;
+model.translate[2] = z;
+</code></pre>
+</section>
+
+
+
+    </div>
+
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
